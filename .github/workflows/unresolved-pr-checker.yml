@@ -25,6 +25,7 @@ jobs:
         env:
           # Comma-separated repos in the form "owner/repo1, owner/repo2, ..."
           REPOS: ${{ secrets.REPOS }}
+          ORG_READ_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
         with:
           script: |
             // Access the "REPOS" env var, e.g. "org1/repoA, org2/repoB"
