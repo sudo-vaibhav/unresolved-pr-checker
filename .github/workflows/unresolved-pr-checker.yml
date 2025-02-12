@@ -12,12 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo (optional if you don't need to read files)
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
+    #   - name: Set up Node
+    #     uses: actions/setup-node@v3
+    #     with:
+    #       node-version: '20'
 
       - name: Find unresolved PR conversations for all repos
         id: find-conversations
