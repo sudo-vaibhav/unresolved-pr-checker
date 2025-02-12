@@ -4,7 +4,9 @@ on:
   schedule:
     - cron: "0 9 * * 1-5"  # Runs every weekday at 9am
   workflow_dispatch:  # Allows manual trigger
-
+  push:
+    branches:
+      - main
 jobs:
   check-unresolved:
     runs-on: ubuntu-latest
