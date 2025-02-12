@@ -41,39 +41,70 @@ jobs:
                 core.warning(`Invalid repository format: '${repoFull}'`);
                 continue;
             }
+            const resp = await octokit.graphql({
+                  query: `query FetchReviewComments($owner: String!, $repo: String!) {
+                repository(owner: $owner, name: $repo) {
 
-            // 1. List all open PRs
-            const { data: prs } = await github.rest.pulls.list({
-                owner,
-                repo,
-                state: "open",
-                per_page: 100
-            });
-
-            // 2. For each PR, list review comments and check "last commenter"
-            for (const pr of prs) {
-                const { data: comments } = await github.rest.pulls.listReviewComments({
-                owner,
-                repo,
-                pull_number: pr.number,
-                per_page: 100
+                  pullRequests(first: 30, states: OPEN) {
+                    
+                    edges {
+                    
+                    node {
+                      author { 
+                        login
+                      }
+                      title
+                      url
+                      reviewDecision
+                      reviewThreads(first: 100) {
+                        edges {
+                          node {
+                            isResolved
+                            isOutdated
+                            isCollapsed
+                            comments(first: 100) {
+                              totalCount
+                              nodes {
+                                author {
+                                  login
+                                }
+                                body
+                                url
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  }
+                }
+              }`,
+                  owner,
+                  repo,
                 });
-
-                if (comments.length > 0) {
-                // Check the last comment
-                const lastComment = comments[comments.length - 1];
-                // If the last comment is NOT from the PR author, we consider it "unresolved"
-                if (lastComment.user.login !== pr.user.login) {
-                    allUnresolved.push({
-                    repository: `${owner}/${repo}`,
-                    pr_number: pr.number,
-                    pr_title: pr.title,
-                    pr_author: pr.user.login,
-                    last_commenter: lastComment.user.login,
-                    });
-                }
-                }
-            }
+            const pullRequests = resp.repository.pullRequests;
+            for (const pr of pullRequests.edges) {
+              const conversationThreads = pr.node.reviewThreads.edges.flatMap(
+                (edge) => edge.node
+              );
+              const unresolvedConversationThreads = conversationThreads.filter(
+                (thread) => !thread.isResolved
+              );
+              const lastUnresolvedComment = unresolvedConversationThreads
+                .at(-1)
+                ?.comments.nodes.at(-1);
+              const lastCommenter = lastUnresolvedComment?.author.login;
+              const lastCommentBody = lastUnresolvedComment?.body;
+              if (lastCommenter && lastCommenter !== pr.node.author.login) {
+                allUnresolved.push({
+                  repository: `${owner}/${repo}`,
+                  pr_url: pr.node.url,
+                  pr_author: pr.node.author.login,
+                  body: lastCommentBody!,
+                  last_commenter: lastCommenter!,
+                });
+              }
             }
             const axios = require('axios');
             const response = await axios.post(process.env.WEBHOOK_URL, allUnresolved);
