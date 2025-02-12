@@ -101,8 +101,8 @@ jobs:
                   repository: `${owner}/${repo}`,
                   pr_url: pr.node.url,
                   pr_author: pr.node.author.login,
-                  body: lastCommentBody!,
-                  last_commenter: lastCommenter!,
+                  body: lastCommentBody,
+                  last_commenter: lastCommenter,
                 });
               }
             }
