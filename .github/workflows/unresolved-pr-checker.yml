@@ -41,7 +41,7 @@ jobs:
                 core.warning(`Invalid repository format: '${repoFull}'`);
                 continue;
               }
-              const resp = await octokit.graphql({
+              const resp = await github.graphql({
                 query: `query FetchReviewComments($owner: String!, $repo: String!) {
                 repository(owner: $owner, name: $repo) {
 
