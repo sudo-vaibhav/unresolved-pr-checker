@@ -15,18 +15,15 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '20'
 
       - name: Find unresolved PR conversations for all repos
         id: find-conversations
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
+        env:
+          REPOS: ${{ secrets.REPOS }}
         with:
           script: |
-            const { Octokit } = require("@octokit/rest");
-            const octokit = new Octokit({
-              auth: process.env.GITHUB_TOKEN
-            });
-
             // The secret REPOS might look like: "org1/repoA, org2/repoB, org3/repoC"
             const repos = process.env.REPOS.split(",").map(r => r.trim());
             const allUnresolved = [];
