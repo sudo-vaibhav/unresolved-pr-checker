@@ -2,7 +2,7 @@ name: PR Unresolved Checker
 
 on:
   schedule:
-    - cron: "0 9 * * 1-5" # Runs every weekday at 9am
+    - cron: "30 3 * * 1-5" # Runs every weekday at 3:30am
   workflow_dispatch: # Allows manual trigger
   push:
     branches:
@@ -111,14 +111,3 @@ jobs:
             }
             // Output the final array of unresolved PR data
             core.setOutput("unresolvedData", JSON.stringify(allUnresolved));
-
-      # - name: Post data to webhook
-      #   if: steps.find-conversations.outputs.unresolvedData != '[]'
-      #   run: |
-      #     echo "Posting unresolved PR data to webhook..."
-      #     echo "Payload: ${{ steps.find-conversations.outputs.unresolvedData }}"
-
-      #     curl -X POST \
-      #         -H "Content-Type: application/json" \
-      #         -d '${{ steps.find-conversations.outputs.unresolvedData }}' \
-      #         ${{ secrets.WEBHOOK_URL }}
