@@ -14,17 +14,18 @@ jobs:
       - name: Check out the repo (optional if you don't need to read files)
         uses: actions/checkout@v4
 
-      #   - name: Set up Node
-      #     uses: actions/setup-node@v3
-      #     with:
-      #       node-version: '20'
-
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+      - run: npm install axios
       - name: Find unresolved PR conversations
         id: find-conversations
         uses: actions/github-script@v7
         env:
           # Comma-separated repos in the form "owner/repo1, owner/repo2, ..."
           REPOS: ${{ secrets.REPOS }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
         with:
           github-token: ${{ secrets.ORG_READ_TOKEN }}
           script: |
@@ -74,17 +75,19 @@ jobs:
                 }
             }
             }
+            const axios = require('axios');
+            const response = await axios.post(process.env.WEBHOOK_URL, allUnresolved);
 
             // Output the final array of unresolved PR data
             core.setOutput("unresolvedData", JSON.stringify(allUnresolved));
 
-      - name: Post data to webhook
-        if: steps.find-conversations.outputs.unresolvedData != '[]'
-        run: |
-          echo "Posting unresolved PR data to webhook..."
-          echo "Payload: ${{ steps.find-conversations.outputs.unresolvedData }}"
+      # - name: Post data to webhook
+      #   if: steps.find-conversations.outputs.unresolvedData != '[]'
+      #   run: |
+      #     echo "Posting unresolved PR data to webhook..."
+      #     echo "Payload: ${{ steps.find-conversations.outputs.unresolvedData }}"
 
-          curl -X POST \
-              -H "Content-Type: application/json" \
-              -d '${{ steps.find-conversations.outputs.unresolvedData }}' \
-              ${{ secrets.WEBHOOK_URL }}
+      #     curl -X POST \
+      #         -H "Content-Type: application/json" \
+      #         -d '${{ steps.find-conversations.outputs.unresolvedData }}' \
+      #         ${{ secrets.WEBHOOK_URL }}
