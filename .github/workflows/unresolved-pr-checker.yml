@@ -39,7 +39,7 @@ jobs:
 
               // 1. List open PRs for this repo
               //    (By default, .list() returns at most 30 results; set `per_page: 100` for more.)
-              const { data: prs } = await octokit.pulls.list({
+              const { data: prs } = await github.pulls.list({
                 owner,
                 repo,
                 state: "open",
@@ -48,7 +48,7 @@ jobs:
 
               // 2. Check each PR for "unresolved" feedback
               for (const pr of prs) {
-                const { data: comments } = await octokit.pulls.listReviewComments({
+                const { data: comments } = await github.pulls.listReviewComments({
                   owner,
                   repo,
                   pull_number: pr.number,
