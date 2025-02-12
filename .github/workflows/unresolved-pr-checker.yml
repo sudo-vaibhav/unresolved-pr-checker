@@ -30,19 +30,19 @@ jobs:
           github-token: ${{ secrets.ORG_READ_TOKEN }}
           script: |
             // Access the "REPOS" env var, e.g. "org1/repoA, org2/repoB"
-            const reposList = process.env.REPOS.split(",").map(r => r.trim());
+            const reposList = process.env.REPOS.split(",").map((r) => r.trim());
 
             // We'll accumulate all unresolved PRs from all repos here
             const allUnresolved = [];
 
             for (const repoFull of reposList) {
-            const [owner, repo] = repoFull.split("/");
-            if (!owner || !repo) {
+              const [owner, repo] = repoFull.split("/");
+              if (!owner || !repo) {
                 core.warning(`Invalid repository format: '${repoFull}'`);
                 continue;
-            }
-            const resp = await octokit.graphql({
-                  query: `query FetchReviewComments($owner: String!, $repo: String!) {
+              }
+              const resp = await octokit.graphql({
+                query: `query FetchReviewComments($owner: String!, $repo: String!) {
                 repository(owner: $owner, name: $repo) {
 
                   pullRequests(first: 30, states: OPEN) {
@@ -80,35 +80,35 @@ jobs:
                   }
                 }
               }`,
-                  owner,
-                  repo,
-                });
-            const pullRequests = resp.repository.pullRequests;
-            for (const pr of pullRequests.edges) {
-              const conversationThreads = pr.node.reviewThreads.edges.flatMap(
-                (edge) => edge.node
-              );
-              const unresolvedConversationThreads = conversationThreads.filter(
-                (thread) => !thread.isResolved
-              );
-              const lastUnresolvedComment = unresolvedConversationThreads
-                .at(-1)
-                ?.comments.nodes.at(-1);
-              const lastCommenter = lastUnresolvedComment?.author.login;
-              const lastCommentBody = lastUnresolvedComment?.body;
-              if (lastCommenter && lastCommenter !== pr.node.author.login) {
-                allUnresolved.push({
-                  repository: `${owner}/${repo}`,
-                  pr_url: pr.node.url,
-                  pr_author: pr.node.author.login,
-                  body: lastCommentBody,
-                  last_commenter: lastCommenter,
-                });
+                owner,
+                repo,
+              });
+              const pullRequests = resp.repository.pullRequests;
+              for (const pr of pullRequests.edges) {
+                const conversationThreads = pr.node.reviewThreads.edges.flatMap(
+                  (edge) => edge.node
+                );
+                const unresolvedConversationThreads = conversationThreads.filter(
+                  (thread) => !thread.isResolved
+                );
+                const lastUnresolvedComment = unresolvedConversationThreads
+                  .at(-1)
+                  ?.comments.nodes.at(-1);
+                const lastCommenter = lastUnresolvedComment?.author.login;
+                const lastCommentBody = lastUnresolvedComment?.body;
+                if (lastCommenter && lastCommenter !== pr.node.author.login) {
+                  allUnresolved.push({
+                    repository: `${owner}/${repo}`,
+                    pr_url: pr.node.url,
+                    pr_author: pr.node.author.login,
+                    body: lastCommentBody,
+                    last_commenter: lastCommenter,
+                  });
+                }
               }
+              const axios = require("axios");
+              const response = await axios.post(process.env.WEBHOOK_URL, allUnresolved);
             }
-            const axios = require('axios');
-            const response = await axios.post(process.env.WEBHOOK_URL, allUnresolved);
-
             // Output the final array of unresolved PR data
             core.setOutput("unresolvedData", JSON.stringify(allUnresolved));
 
