@@ -2,8 +2,8 @@ name: PR Unresolved Checker
 
 on:
   schedule:
-    - cron: "0 9 * * 1-5"  # Runs every weekday at 9am
-  workflow_dispatch:  # Allows manual trigger
+    - cron: "0 9 * * 1-5" # Runs every weekday at 9am
+  workflow_dispatch: # Allows manual trigger
   push:
     branches:
       - main
@@ -14,75 +14,76 @@ jobs:
       - name: Check out the repo (optional if you don't need to read files)
         uses: actions/checkout@v4
 
-    #   - name: Set up Node
-    #     uses: actions/setup-node@v3
-    #     with:
-    #       node-version: '20'
+      #   - name: Set up Node
+      #     uses: actions/setup-node@v3
+      #     with:
+      #       node-version: '20'
 
-      - name: Find unresolved PR conversations for all repos
+      - name: Find unresolved PR conversations
         id: find-conversations
         uses: actions/github-script@v7
         env:
+          # Comma-separated repos in the form "owner/repo1, owner/repo2, ..."
           REPOS: ${{ secrets.REPOS }}
         with:
           script: |
-            // The secret REPOS might look like: "org1/repoA, org2/repoB, org3/repoC"
-            const repos = process.env.REPOS.split(",").map(r => r.trim());
+            // Access the "REPOS" env var, e.g. "org1/repoA, org2/repoB"
+            const reposList = process.env.REPOS.split(",").map(r => r.trim());
+
+            // We'll accumulate all unresolved PRs from all repos here
             const allUnresolved = [];
 
-            for (const repoFull of repos) {
-              const [owner, repo] = repoFull.split("/");
-              if (!owner || !repo) {
+            for (const repoFull of reposList) {
+            const [owner, repo] = repoFull.split("/");
+            if (!owner || !repo) {
                 core.warning(`Invalid repository format: '${repoFull}'`);
                 continue;
-              }
+            }
 
-              // 1. List open PRs for this repo
-              //    (By default, .list() returns at most 30 results; set `per_page: 100` for more.)
-              const { data: prs } = await github.pulls.list({
+            // 1. List all open PRs
+            const { data: prs } = await github.rest.pulls.list({
                 owner,
                 repo,
                 state: "open",
                 per_page: 100
-              });
+            });
 
-              // 2. Check each PR for "unresolved" feedback
-              for (const pr of prs) {
-                const { data: comments } = await github.pulls.listReviewComments({
-                  owner,
-                  repo,
-                  pull_number: pr.number,
-                  per_page: 100
+            // 2. For each PR, list review comments and check "last commenter"
+            for (const pr of prs) {
+                const { data: comments } = await github.rest.pulls.listReviewComments({
+                owner,
+                repo,
+                pull_number: pr.number,
+                per_page: 100
                 });
 
                 if (comments.length > 0) {
-                  // Get the last comment
-                  const lastComment = comments[comments.length - 1];
-                  // If the last comment is NOT from the PR author, it's "awaiting author feedback"
-                  if (lastComment.user.login !== pr.user.login) {
+                // Check the last comment
+                const lastComment = comments[comments.length - 1];
+                // If the last comment is NOT from the PR author, we consider it "unresolved"
+                if (lastComment.user.login !== pr.user.login) {
                     allUnresolved.push({
-                      repository: `${owner}/${repo}`,
-                      pr_number: pr.number,
-                      pr_title: pr.title,
-                      pr_author: pr.user.login,
-                      last_commenter: lastComment.user.login,
+                    repository: `${owner}/${repo}`,
+                    pr_number: pr.number,
+                    pr_title: pr.title,
+                    pr_author: pr.user.login,
+                    last_commenter: lastComment.user.login,
                     });
-                  }
                 }
-              }
+                }
+            }
             }
 
+            // Output the final array of unresolved PR data
             core.setOutput("unresolvedData", JSON.stringify(allUnresolved));
 
       - name: Post data to webhook
-        # Only run if we have any unresolved PR threads across all repos
         if: steps.find-conversations.outputs.unresolvedData != '[]'
         run: |
           echo "Posting unresolved PR data to webhook..."
-          echo "Data: ${{ steps.find-conversations.outputs.unresolvedData }}"
-          
-          # POST to the webhook URL
+          echo "Payload: ${{ steps.find-conversations.outputs.unresolvedData }}"
+
           curl -X POST \
-            -H "Content-Type: application/json" \
-            -d '${{ steps.find-conversations.outputs.unresolvedData }}' \
-            ${{ secrets.WEBHOOK_URL }}
+              -H "Content-Type: application/json" \
+              -d '${{ steps.find-conversations.outputs.unresolvedData }}' \
+              ${{ secrets.WEBHOOK_URL }}
