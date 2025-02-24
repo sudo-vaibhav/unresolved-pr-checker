@@ -107,7 +107,8 @@ jobs:
                 }
               }
               const axios = require("axios");
-              const response = await axios.post(process.env.WEBHOOK_URL, allUnresolved);
+             
             }
+            const response = await axios.post(process.env.WEBHOOK_URL, allUnresolved);
             // Output the final array of unresolved PR data
             core.setOutput("unresolvedData", JSON.stringify(allUnresolved));
