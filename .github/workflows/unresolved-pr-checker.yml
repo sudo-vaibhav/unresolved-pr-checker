@@ -9,7 +9,7 @@ on:
   #     - main
 jobs:
   check-unresolved:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Check out the repo (optional if you don't need to read files)
         uses: actions/checkout@v4
